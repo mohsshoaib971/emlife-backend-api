@@ -3,27 +3,61 @@ const express = require("express");
 const cors = require("cors");
 const { CloudantV1 } = require("@ibm-cloud/cloudant");
 const { IamAuthenticator } = require("ibm-cloud-sdk-core");
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const port = process.env.PORT;
+const port = process.env.PORT || 3000;
 
-// Cloudant connection
+// ===============================
+// Cloudant Connection
+// ===============================
 const cloudant = CloudantV1.newInstance({
   authenticator: new IamAuthenticator({
     apikey: process.env.CLOUDANT_APIKEY,
   }),
   serviceUrl: process.env.CLOUDANT_URL,
 });
-// Test route
+
+// ===============================
+// TEST ROUTES
+// ===============================
+
 app.get("/", (req, res) => {
   res.json({ message: "EMLife Backend API Running 🚀" });
 });
-// Register User
+
+app.get("/health", (req, res) => {
+  res.json({
+    status: "OK",
+    message: "EMLIFE Backend Running",
+    timestamp: new Date(),
+  });
+});
+
+app.get("/db-test", async (req, res) => {
+  try {
+    const response = await cloudant.getAllDbs();
+    res.json({
+      status: "Database Connected",
+      databases: response.result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "Database Error",
+      error: error.message,
+    });
+  }
+});
+
+// ===============================
+// AUTH APIs
+// ===============================
+
+// Register
 app.post("/register", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -34,20 +68,27 @@ app.post("/register", async (req, res) => {
       email,
       password: hashedPassword,
       role: "admin",
-      created_at: new Date()
+      created_at: new Date(),
     };
 
     const response = await cloudant.postDocument({
       db: "employees",
-      document: newUser
+      document: newUser,
     });
 
-    res.json({ message: "User registered", id: response.result.id });
+    res.json({
+      message: "User registered",
+      id: response.result.id,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Registration error", error: error.message });
+    res.status(500).json({
+      message: "Registration error",
+      error: error.message,
+    });
   }
 });
-// Login User
+
+// Login
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -86,23 +127,54 @@ app.post("/login", async (req, res) => {
     });
   }
 });
-// JWT Verification Middleware
-const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization;
 
-  if (!token) {
-    return res.status(403).json({ message: "Access denied. No token provided." });
+// ===============================
+// JWT Middleware
+// ===============================
+const verifyToken = (req, res, next) => {
+  const header = req.headers.authorization;
+
+  if (!header) {
+    return res
+      .status(403)
+      .json({ message: "Access denied. No token provided." });
   }
 
   try {
-    const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET);
+    const token = header.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     next();
   } catch (error) {
     res.status(401).json({ message: "Invalid token" });
   }
 };
-// Get all employees
+
+// ===============================
+// EMPLOYEE CRUD APIs
+// ===============================
+
+// Create Employee
+app.post("/employees", verifyToken, async (req, res) => {
+  try {
+    const response = await cloudant.postDocument({
+      db: "employees",
+      document: req.body,
+    });
+
+    res.json({
+      status: "Employee Created",
+      id: response.result.id,
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "Error Creating Employee",
+      error: error.message,
+    });
+  }
+});
+
+// Get All Employees
 app.get("/employees", verifyToken, async (req, res) => {
   try {
     const response = await cloudant.postAllDocs({
@@ -110,86 +182,78 @@ app.get("/employees", verifyToken, async (req, res) => {
       includeDocs: true,
     });
 
-    const employees = response.result.rows.map(row => row.doc);
+    const employees = response.result.rows.map((row) => row.doc);
+
     res.json(employees);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+    });
   }
 });
-// Health route
-app.get('/health', (req, res) => {
-  res.json({
-    status: "OK",
-    message: "EMLIFE Backend Running",
-    timestamp: new Date()
-  });
-});
 
-// Database test route
-// Health route
-app.get('/health', (req, res) => {
-  res.json({
-    status: "OK",
-    message: "EMLIFE Backend Running",
-    timestamp: new Date()
-  });
-});
-
-// Database test route
-app.get('/db-test', async (req, res) => {
+// Get Employee By ID
+app.get("/employees/:id", verifyToken, async (req, res) => {
   try {
-    const response = await cloudant.getAllDbs();
-
-    res.json({
-      status: "Database Connected",
-      databases: response.result
+    const employee = await cloudant.getDocument({
+      db: "employees",
+      docId: req.params.id,
     });
 
+    res.json(employee.result);
   } catch (error) {
     res.status(500).json({
-      status: "Database Error",
-      error: error.message
+      status: "Error Fetching Employee",
+      error: error.message,
     });
   }
 });
 
-// ===============================
-// EMPLOYEES CRUD APIs
-// ===============================
-
-// Create Employee
-app.get("/employees", verifyToken, async (req, res) => {
+// Update Employee
+app.put("/employees/:id", verifyToken, async (req, res) => {
   try {
-    const employeeDb = cloudant.database('employees');
+    const id = req.params.id;
 
-    const response = await employeeDb.postDocument({
-      document: req.body
+    const existing = await cloudant.getDocument({
+      db: "employees",
+      docId: id,
+    });
+
+    const currentDoc = existing.result;
+
+    const updatedDoc = {
+      ...currentDoc,
+      ...req.body,
+    };
+
+    const response = await cloudant.putDocument({
+      db: "employees",
+      docId: id,
+      document: updatedDoc,
     });
 
     res.json({
-      status: "Employee Created",
-      id: response.result.id
+      status: "Employee Updated",
+      result: response.result,
     });
-
   } catch (error) {
     res.status(500).json({
-      status: "Error Creating Employee",
-      error: error.message
+      status: "Error Updating Employee",
+      error: error.message,
     });
   }
 });
+
 // Delete Employee
 app.delete("/employees/:id", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1️⃣ Get existing document (needed to get _rev)
     const existingDoc = await cloudant.getDocument({
       db: "employees",
       docId: id,
     });
 
-    // 2️⃣ Delete using _rev
     await cloudant.deleteDocument({
       db: "employees",
       docId: id,
@@ -200,7 +264,6 @@ app.delete("/employees/:id", verifyToken, async (req, res) => {
       message: "Employee deleted successfully",
       id: id,
     });
-
   } catch (error) {
     res.status(500).json({
       message: "Error deleting employee",
@@ -208,95 +271,10 @@ app.delete("/employees/:id", verifyToken, async (req, res) => {
     });
   }
 });
-// Get Employee By ID
-app.get("/employees", verifyToken, async (req, res) => {
-  try {
-    const employee = await cloudant.getDocument({
-      db: 'employees',
-      docId: req.params.id
-    });
 
-    res.json(employee.result);
-
-  } catch (error) {
-    res.status(500).json({
-      status: "Error Fetching Employee",
-      error: error.message
-    });
-  }
-});
-
-// Update Employee
-app.get("/employees", verifyToken, async (req, res) => {
-  try {
-    const id = req.params.id;
-
-    // 1️⃣ Get existing document
-    const existing = await cloudant.getDocument({
-      db: 'employees',
-      docId: id
-    });
-
-    const currentDoc = existing.result;
-
-    // 2️⃣ Update fields
-    const updatedDoc = {
-      ...currentDoc,
-      ...req.body
-    };
-
-    // 3️⃣ Save updated document
-    const response = await cloudant.putDocument({
-      db: 'employees',
-      docId: id,
-      document: updatedDoc
-    });
-
-    res.json({
-      status: "Employee Updated",
-      result: response.result
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      status: "Error Updating Employee",
-      error: error.message
-    });
-  }
-});
-    // 1️⃣ Get existing document
-    const existing = await cloudant.getDocument({
-      db: 'employees',
-      docId: id
-    });
-
-    const currentDoc = existing.result;
-
-    // 2️⃣ Update fields
-    const updatedDoc = {
-      ...currentDoc,
-      ...req.body
-    };
-
-    // 3️⃣ Save updated document
-    const response = await cloudant.putDocument({
-      db: 'employees',
-      docId: id,
-      document: updatedDoc
-    });
-
-    res.json({
-      status: "Employee Updated",
-      result: response.result
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      status: "Error Updating Employee",
-      error: error.message
-    });
-  }
-});
+// ===============================
+// START SERVER
+// ===============================
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
