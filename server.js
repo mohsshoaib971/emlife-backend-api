@@ -47,28 +47,43 @@ app.post("/register", async (req, res) => {
     res.status(500).json({ message: "Registration error", error: error.message });
   }
 });
-// Register User
-app.post("/register", async (req, res) => {
+// Login User
+app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = {
-      email,
-      password: hashedPassword,
-      role: "admin",
-      created_at: new Date()
-    };
-
-    const response = await cloudant.postDocument({
-      db: "employees",
-      document: newUser
+    const response = await cloudant.postFind({
+      db: "users",
+      selector: { email },
     });
 
-    res.json({ message: "User registered", id: response.result.id });
+    if (!response.result.docs.length) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    const user = response.result.docs[0];
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.json({
+      message: "Login successful",
+      token,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Registration error", error: error.message });
+    res.status(500).json({
+      message: "Login error",
+      error: error.message,
+    });
   }
 });
 // JWT Verification Middleware
