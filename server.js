@@ -3,6 +3,8 @@ const express = require("express");
 const cors = require("cors");
 const { CloudantV1 } = require("@ibm-cloud/cloudant");
 const { IamAuthenticator } = require("ibm-cloud-sdk-core");
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 app.use(cors());
@@ -16,6 +18,72 @@ const cloudant = CloudantV1.newInstance({
     apikey: process.env.CLOUDANT_APIKEY,
   }),
   serviceUrl: process.env.CLOUDANT_URL,
+});
+// JWT Verification Middleware
+const verifyToken = (req, res, next) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(403).json({ message: "Access denied. No token provided." });
+  }
+
+  try {
+    const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+// Register User
+app.post("/register", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = {
+      email,
+      password: hashedPassword,
+      role: "admin",
+      created_at: new Date()
+    };
+
+    const response = await cloudant.postDocument({
+      db: "employees",
+      document: newUser
+    });
+
+    res.json({ message: "User registered", id: response.result.id });
+  } catch (error) {
+    res.status(500).json({ message: "Registration error", error: error.message });
+  }
+});
+
+// Register User
+app.post("/register", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = {
+      email,
+      password: hashedPassword,
+      role: "admin",
+      created_at: new Date()
+    };
+
+    const response = await cloudant.postDocument({
+      db: "employees",
+      document: newUser
+    });
+
+    res.json({ message: "User registered", id: response.result.id });
+  } catch (error) {
+    res.status(500).json({ message: "Registration error", error: error.message });
+  }
 });
 
 // Test route
