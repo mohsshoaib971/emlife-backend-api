@@ -52,6 +52,16 @@ app.get('/health', (req, res) => {
 });
 
 // Database test route
+// Health route
+app.get('/health', (req, res) => {
+  res.json({
+    status: "OK",
+    message: "EMLIFE Backend Running",
+    timestamp: new Date()
+  });
+});
+
+// Database test route
 app.get('/db-test', async (req, res) => {
   try {
     const dbList = await cloudant.db.list();
