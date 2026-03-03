@@ -10,7 +10,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const port = process.env.PORT || 8080;
+const port = process.env.PORT;
 
 // Cloudant connection
 const cloudant = CloudantV1.newInstance({
@@ -101,11 +101,6 @@ app.get("/employees", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
-
 // Health route
 app.get('/health', (req, res) => {
   res.json({
