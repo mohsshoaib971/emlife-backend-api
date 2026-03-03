@@ -132,16 +132,12 @@ app.get('/employees', async (req, res) => {
 // Get Employee By ID
 app.get('/employees/:id', async (req, res) => {
   try {
-    const employeeDb = cloudant.database('employees');
-
-    const response = await employeeDb.getDocument({
+    const employee = await cloudant.getDocument({
+      db: 'employees',
       docId: req.params.id
     });
 
-    res.json({
-      status: "Success",
-      data: response.result
-    });
+    res.json(employee.result);
 
   } catch (error) {
     res.status(500).json({
@@ -150,7 +146,6 @@ app.get('/employees/:id', async (req, res) => {
     });
   }
 });
-
 
 // Update Employee
 app.put('/employees/:id', async (req, res) => {
