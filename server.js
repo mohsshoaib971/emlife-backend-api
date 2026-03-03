@@ -1,3 +1,14 @@
+const authorizeRole = (allowedRoles) => {
+  return (req, res, next) => {
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: insufficient permissions"
+      });
+    }
+    next();
+  };
+};
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
@@ -232,9 +243,11 @@ app.put("/employees/:id", verifyToken, async (req, res) => {
       document: updatedDoc,
     });
 
-    res.json({
-      status: "Employee Updated",
-      result: response.result,
+    sendSuccess(res, "Employee updated successfully", response.result);
+
+  } sendSuccess(res, "Employee updated successfully", response.result);
+  }
+});
     });
   } catch (error) {
     res.status(500).json({
