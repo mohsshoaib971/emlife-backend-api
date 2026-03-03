@@ -103,7 +103,7 @@ const verifyToken = (req, res, next) => {
   }
 };
 // Get all employees
-app.get("/employees", async (req, res) => {
+app.get("/employees", verifyToken, async (req, res) => {
   try {
     const response = await cloudant.postAllDocs({
       db: "employees",
@@ -158,7 +158,7 @@ app.get('/db-test', async (req, res) => {
 // ===============================
 
 // Create Employee
-app.post('/employees', async (req, res) => {
+app.get("/employees", verifyToken, async (req, res) => {
   try {
     const employeeDb = cloudant.database('employees');
 
@@ -178,29 +178,38 @@ app.post('/employees', async (req, res) => {
     });
   }
 });
-// Get All Employees
-app.get('/employees', async (req, res) => {
+// Delete Employee
+app.delete("/employees/:id", verifyToken, async (req, res) => {
   try {
-    const employeeDb = cloudant.database('employees');
+    const { id } = req.params;
 
-    const response = await employeeDb.listDocuments({
-      includeDocs: true
+    // 1️⃣ Get existing document (needed to get _rev)
+    const existingDoc = await cloudant.getDocument({
+      db: "employees",
+      docId: id,
+    });
+
+    // 2️⃣ Delete using _rev
+    await cloudant.deleteDocument({
+      db: "employees",
+      docId: id,
+      rev: existingDoc.result._rev,
     });
 
     res.json({
-      status: "Success",
-      data: response.result.rows.map(row => row.doc)
+      message: "Employee deleted successfully",
+      id: id,
     });
 
   } catch (error) {
     res.status(500).json({
-      status: "Error Fetching Employees",
-      error: error.message
+      message: "Error deleting employee",
+      error: error.message,
     });
   }
 });
 // Get Employee By ID
-app.get('/employees/:id', async (req, res) => {
+app.get("/employees", verifyToken, async (req, res) => {
   try {
     const employee = await cloudant.getDocument({
       db: 'employees',
@@ -218,7 +227,7 @@ app.get('/employees/:id', async (req, res) => {
 });
 
 // Update Employee
-app.put('/employees/:id', async (req, res) => {
+app.get("/employees", verifyToken, async (req, res) => {
   try {
     const id = req.params.id;
 
@@ -255,11 +264,6 @@ app.put('/employees/:id', async (req, res) => {
     });
   }
 });
-// Update Employee
-app.put('/employees/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-
     // 1️⃣ Get existing document
     const existing = await cloudant.getDocument({
       db: 'employees',
