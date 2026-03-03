@@ -53,7 +53,7 @@ app.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
     const response = await cloudant.postFind({
-      db: "users",
+      db: "employees",
       selector: { email },
     });
 
