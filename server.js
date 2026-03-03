@@ -249,14 +249,6 @@ app.put("/employees/:id", verifyToken, async (req, res) => {
     sendError(res, "Error updating employee", error.message);
   }
 });
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: "Error Updating Employee",
-      error: error.message,
-    });
-  }
-});
 
 // Delete Employee
 app.delete("/employees/:id", verifyToken, async (req, res) => {
