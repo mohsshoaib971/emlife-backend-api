@@ -245,7 +245,8 @@ app.put("/employees/:id", verifyToken, async (req, res) => {
 
     sendSuccess(res, "Employee updated successfully", response.result);
 
-  } sendSuccess(res, "Employee updated successfully", response.result);
+  } catch (error) {
+    sendError(res, "Error updating employee", error.message);
   }
 });
     });
