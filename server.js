@@ -78,3 +78,137 @@ app.get('/db-test', async (req, res) => {
     });
   }
 });
+
+// ===============================
+// EMPLOYEES CRUD APIs
+// ===============================
+
+// Create Employee
+app.post('/employees', async (req, res) => {
+  try {
+    const employeeDb = cloudant.database('employees');
+
+    const response = await employeeDb.postDocument({
+      document: req.body
+    });
+
+    res.json({
+      status: "Employee Created",
+      id: response.result.id
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: "Error Creating Employee",
+      error: error.message
+    });
+  }
+});
+
+
+// Get All Employees
+app.get('/employees', async (req, res) => {
+  try {
+    const employeeDb = cloudant.database('employees');
+
+    const response = await employeeDb.listDocuments({
+      includeDocs: true
+    });
+
+    res.json({
+      status: "Success",
+      data: response.result.rows.map(row => row.doc)
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: "Error Fetching Employees",
+      error: error.message
+    });
+  }
+});
+
+
+// Get Employee By ID
+app.get('/employees/:id', async (req, res) => {
+  try {
+    const employeeDb = cloudant.database('employees');
+
+    const response = await employeeDb.getDocument({
+      docId: req.params.id
+    });
+
+    res.json({
+      status: "Success",
+      data: response.result
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: "Error Fetching Employee",
+      error: error.message
+    });
+  }
+});
+
+
+// Update Employee
+app.put('/employees/:id', async (req, res) => {
+  try {
+    const employeeDb = cloudant.database('employees');
+
+    // First get existing document
+    const existing = await employeeDb.getDocument({
+      docId: req.params.id
+    });
+
+    const updatedDoc = {
+      ...existing.result,
+      ...req.body
+    };
+
+    const response = await employeeDb.putDocument({
+      docId: req.params.id,
+      document: updatedDoc
+    });
+
+    res.json({
+      status: "Employee Updated",
+      id: response.result.id
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: "Error Updating Employee",
+      error: error.message
+    });
+  }
+});
+
+
+// Delete Employee
+app.delete('/employees/:id', async (req, res) => {
+  try {
+    const employeeDb = cloudant.database('employees');
+
+    const existing = await employeeDb.getDocument({
+      docId: req.params.id
+    });
+
+    const response = await employeeDb.deleteDocument({
+      docId: req.params.id,
+      rev: existing.result._rev
+    });
+
+    res.json({
+      status: "Employee Deleted",
+      id: response.result.id
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: "Error Deleting Employee",
+      error: error.message
+    });
+  }
+});
