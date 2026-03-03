@@ -19,6 +19,58 @@ const cloudant = CloudantV1.newInstance({
   }),
   serviceUrl: process.env.CLOUDANT_URL,
 });
+// Test route
+app.get("/", (req, res) => {
+  res.json({ message: "EMLife Backend API Running 🚀" });
+});
+// Register User
+app.post("/register", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = {
+      email,
+      password: hashedPassword,
+      role: "admin",
+      created_at: new Date()
+    };
+
+    const response = await cloudant.postDocument({
+      db: "employees",
+      document: newUser
+    });
+
+    res.json({ message: "User registered", id: response.result.id });
+  } catch (error) {
+    res.status(500).json({ message: "Registration error", error: error.message });
+  }
+});
+// Register User
+app.post("/register", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = {
+      email,
+      password: hashedPassword,
+      role: "admin",
+      created_at: new Date()
+    };
+
+    const response = await cloudant.postDocument({
+      db: "employees",
+      document: newUser
+    });
+
+    res.json({ message: "User registered", id: response.result.id });
+  } catch (error) {
+    res.status(500).json({ message: "Registration error", error: error.message });
+  }
+});
 // JWT Verification Middleware
 const verifyToken = (req, res, next) => {
   const token = req.headers.authorization;
@@ -35,62 +87,6 @@ const verifyToken = (req, res, next) => {
     res.status(401).json({ message: "Invalid token" });
   }
 };
-
-// Register User
-app.post("/register", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = {
-      email,
-      password: hashedPassword,
-      role: "admin",
-      created_at: new Date()
-    };
-
-    const response = await cloudant.postDocument({
-      db: "employees",
-      document: newUser
-    });
-
-    res.json({ message: "User registered", id: response.result.id });
-  } catch (error) {
-    res.status(500).json({ message: "Registration error", error: error.message });
-  }
-});
-
-// Register User
-app.post("/register", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = {
-      email,
-      password: hashedPassword,
-      role: "admin",
-      created_at: new Date()
-    };
-
-    const response = await cloudant.postDocument({
-      db: "employees",
-      document: newUser
-    });
-
-    res.json({ message: "User registered", id: response.result.id });
-  } catch (error) {
-    res.status(500).json({ message: "Registration error", error: error.message });
-  }
-});
-
-// Test route
-app.get("/", (req, res) => {
-  res.json({ message: "EMLife Backend API Running 🚀" });
-});
-
 // Get all employees
 app.get("/employees", async (req, res) => {
   try {
@@ -172,8 +168,6 @@ app.post('/employees', async (req, res) => {
     });
   }
 });
-
-
 // Get All Employees
 app.get('/employees', async (req, res) => {
   try {
@@ -195,8 +189,6 @@ app.get('/employees', async (req, res) => {
     });
   }
 });
-
-
 // Get Employee By ID
 app.get('/employees/:id', async (req, res) => {
   try {
@@ -290,4 +282,7 @@ app.put('/employees/:id', async (req, res) => {
       error: error.message
     });
   }
+});
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
