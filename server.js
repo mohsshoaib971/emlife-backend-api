@@ -64,11 +64,13 @@ app.get('/health', (req, res) => {
 // Database test route
 app.get('/db-test', async (req, res) => {
   try {
-    const dbList = await cloudant.db.list();
+    const response = await cloudant.getAllDbs();
+
     res.json({
       status: "Database Connected",
-      databases: dbList
+      databases: response.result
     });
+
   } catch (error) {
     res.status(500).json({
       status: "Database Error",
