@@ -41,3 +41,28 @@ app.get("/employees", async (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
+// Health route
+app.get('/health', (req, res) => {
+  res.json({
+    status: "OK",
+    message: "EMLIFE Backend Running",
+    timestamp: new Date()
+  });
+});
+
+// Database test route
+app.get('/db-test', async (req, res) => {
+  try {
+    const dbList = await cloudant.db.list();
+    res.json({
+      status: "Database Connected",
+      databases: dbList
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "Database Error",
+      error: error.message
+    });
+  }
+});
