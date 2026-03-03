@@ -150,26 +150,32 @@ app.get('/employees/:id', async (req, res) => {
 // Update Employee
 app.put('/employees/:id', async (req, res) => {
   try {
-    const employeeDb = cloudant.database('employees');
+    const id = req.params.id;
 
-    // First get existing document
-    const existing = await employeeDb.getDocument({
-      docId: req.params.id
+    // 1️⃣ Get existing document
+    const existing = await cloudant.getDocument({
+      db: 'employees',
+      docId: id
     });
 
+    const currentDoc = existing.result;
+
+    // 2️⃣ Update fields
     const updatedDoc = {
-      ...existing.result,
+      ...currentDoc,
       ...req.body
     };
 
-    const response = await employeeDb.putDocument({
-      docId: req.params.id,
+    // 3️⃣ Save updated document
+    const response = await cloudant.putDocument({
+      db: 'employees',
+      docId: id,
       document: updatedDoc
     });
 
     res.json({
       status: "Employee Updated",
-      id: response.result.id
+      result: response.result
     });
 
   } catch (error) {
@@ -179,30 +185,40 @@ app.put('/employees/:id', async (req, res) => {
     });
   }
 });
-
-
-// Delete Employee
-app.delete('/employees/:id', async (req, res) => {
+// Update Employee
+app.put('/employees/:id', async (req, res) => {
   try {
-    const employeeDb = cloudant.database('employees');
+    const id = req.params.id;
 
-    const existing = await employeeDb.getDocument({
-      docId: req.params.id
+    // 1️⃣ Get existing document
+    const existing = await cloudant.getDocument({
+      db: 'employees',
+      docId: id
     });
 
-    const response = await employeeDb.deleteDocument({
-      docId: req.params.id,
-      rev: existing.result._rev
+    const currentDoc = existing.result;
+
+    // 2️⃣ Update fields
+    const updatedDoc = {
+      ...currentDoc,
+      ...req.body
+    };
+
+    // 3️⃣ Save updated document
+    const response = await cloudant.putDocument({
+      db: 'employees',
+      docId: id,
+      document: updatedDoc
     });
 
     res.json({
-      status: "Employee Deleted",
-      id: response.result.id
+      status: "Employee Updated",
+      result: response.result
     });
 
   } catch (error) {
     res.status(500).json({
-      status: "Error Deleting Employee",
+      status: "Error Updating Employee",
       error: error.message
     });
   }
